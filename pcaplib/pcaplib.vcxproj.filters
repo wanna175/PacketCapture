@@ -1,0 +1,51 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <Filter Include="include">
+      <UniqueIdentifier>{b73ba8bf-72db-444d-ae49-03bd307ad958}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="include\types">
+      <UniqueIdentifier>{1d317cc6-a20c-4d3a-926c-c6512d6f6d0e}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="include\protocols">
+      <UniqueIdentifier>{af8c5edd-5bd7-41bc-b81e-25c2254d8d3e}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="include\utils">
+      <UniqueIdentifier>{9d3b0b8d-5224-4bdf-ac3b-9844411e2669}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src">
+      <UniqueIdentifier>{5136e60f-0576-4b71-a7ee-ec4184c8a7b7}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\types">
+      <UniqueIdentifier>{7e887ca9-7be2-42e6-b06d-f2069da11cf5}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\protocols">
+      <UniqueIdentifier>{f90d752e-3c1f-4ae5-874d-bccb74b09eee}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\utils">
+      <UniqueIdentifier>{8f74c9f1-fb05-4790-b132-e0ea8eec5bf0}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="build">
+      <UniqueIdentifier>{b7ade16c-994a-4e53-a882-d38c6fb6fc3f}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="build\pch.cpp">
+      <Filter>build</Filter>
+    </ClCompile>
+    <ClCompile Include="src\pcaplib.cpp">
+      <Filter>src</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="build\pch.h">
+      <Filter>build</Filter>
+    </ClInclude>
+    <ClInclude Include="include\pcaplib.h">
+      <Filter>include</Filter>
+    </ClInclude>
+    <ClInclude Include="include\types\Types.h">
+      <Filter>include\types</Filter>
+    </ClInclude>
+  </ItemGroup>
+</Project>
