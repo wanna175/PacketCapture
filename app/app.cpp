@@ -4,7 +4,11 @@
 #pragma comment(lib,"Release\\pcaplib.lib")
 #endif
 #include "pcaplib.h"
+#include <iostream>
+using namespace std;
 int main()
 {
 	HelloWorld();
+	cout<<setNpcapDirectory();
+	return 0;
 }

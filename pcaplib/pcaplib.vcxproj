@@ -74,21 +74,29 @@
     <OutDir>$(SolutionDir)lib\$(Configuration)\</OutDir>
     <IncludePath>$(SolutionDir)pcaplib\include;$(SolutionDir)pcaplib\build;$(IncludePath)</IncludePath>
     <SourcePath>$(SolutionDir)pcaplib\src;$(SourcePath)</SourcePath>
+    <ExternalIncludePath>$(SolutionDir)npcap\include\pcap;$(VC_IncludePath);$(WindowsSDK_IncludePath);</ExternalIncludePath>
+    <LibraryPath>$(SolutionDir)npacp\Lib\x64;$(VC_LibraryPath_x86);$(WindowsSDK_LibraryPath_x86)</LibraryPath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <OutDir>$(SolutionDir)lib\$(Configuration)\</OutDir>
     <IncludePath>$(SolutionDir)pcaplib\include;$(SolutionDir)pcaplib\build;$(IncludePath)</IncludePath>
     <SourcePath>$(SolutionDir)pcaplib\src;$(SourcePath)</SourcePath>
+    <ExternalIncludePath>$(SolutionDir)npcap\include\pcap;$(VC_IncludePath);$(WindowsSDK_IncludePath);</ExternalIncludePath>
+    <LibraryPath>$(SolutionDir)npacp\Lib\x64;$(VC_LibraryPath_x86);$(WindowsSDK_LibraryPath_x86)</LibraryPath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <OutDir>$(SolutionDir)lib\$(Configuration)\</OutDir>
     <IncludePath>$(SolutionDir)pcaplib\include;$(SolutionDir)pcaplib\build;$(IncludePath)</IncludePath>
     <SourcePath>$(SolutionDir)pcaplib\src;$(SourcePath)</SourcePath>
+    <LibraryPath>$(SolutionDir)npacp\Lib\x64;$(SolutionDir)npcap\Lib\x64;$(LibraryPath)</LibraryPath>
+    <ExternalIncludePath>$(SolutionDir)npcap\include\pcap;$(SolutionDir)npcap\include\pcap;$(ExternalIncludePath)</ExternalIncludePath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <OutDir>$(SolutionDir)lib\$(Configuration)\</OutDir>
     <IncludePath>$(SolutionDir)pcaplib\include;$(SolutionDir)pcaplib\build;$(IncludePath)</IncludePath>
     <SourcePath>$(SolutionDir)pcaplib\src;$(SourcePath)</SourcePath>
+    <ExternalIncludePath>$(SolutionDir)npcap\include\pcap;$(VC_IncludePath);$(WindowsSDK_IncludePath);</ExternalIncludePath>
+    <LibraryPath>$(SolutionDir)npacp\Lib\x64;$(VC_LibraryPath_x64);$(WindowsSDK_LibraryPath_x64)</LibraryPath>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>
@@ -98,6 +106,7 @@
       <ConformanceMode>true</ConformanceMode>
       <PrecompiledHeader>Use</PrecompiledHeader>
       <PrecompiledHeaderFile>pch.h</PrecompiledHeaderFile>
+      <AdditionalIncludeDirectories>$(SolutionDir)npcap\include;</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>
@@ -115,6 +124,7 @@
       <ConformanceMode>true</ConformanceMode>
       <PrecompiledHeader>Use</PrecompiledHeader>
       <PrecompiledHeaderFile>pch.h</PrecompiledHeaderFile>
+      <AdditionalIncludeDirectories>$(SolutionDir)npcap\include;</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>
@@ -132,6 +142,7 @@
       <ConformanceMode>true</ConformanceMode>
       <PrecompiledHeader>Use</PrecompiledHeader>
       <PrecompiledHeaderFile>pch.h</PrecompiledHeaderFile>
+      <AdditionalIncludeDirectories>$(SolutionDir)npcap\include;$(SolutionDir)npacp\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>
@@ -149,6 +160,7 @@
       <ConformanceMode>true</ConformanceMode>
       <PrecompiledHeader>Use</PrecompiledHeader>
       <PrecompiledHeaderFile>pch.h</PrecompiledHeaderFile>
+      <AdditionalIncludeDirectories>$(SolutionDir)npcap\include;</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>
@@ -159,11 +171,13 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClInclude Include="include\protocols\ether.h" />
     <ClInclude Include="include\pcaplib.h" />
     <ClInclude Include="build\pch.h" />
     <ClInclude Include="include\types\Types.h" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="src\protocols\ether.cpp" />
     <ClCompile Include="src\pcaplib.cpp" />
     <ClCompile Include="build\pch.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Create</PrecompiledHeader>
