@@ -1,11 +1,12 @@
 #include "pch.h"
 #include "pcaplib.h"
+#include "../include/utils/pcapUtils.h"
 /*
     PacketCapture class 
 */
 // 생성자
 PacketCapture::PacketCapture() 
-    : handle(nullptr), alldevs(nullptr), filter(make_unique<PacketFilter>()),
+    : curdev(nullptr), handle(nullptr), alldevs(nullptr), filter(make_unique<PacketFilter>()),
       saver(nullptr), analyzer(make_unique<PacketAnalyzer>()) {}
 
 // 소멸자
@@ -38,14 +39,14 @@ bool PacketCapture::initialize() {
 }
 
 // 패킷 캡처 시작
-bool PacketCapture::startCapture(const string& deviceName,const string& filterExpr = "",int captureDuration = 0) {
+bool PacketCapture::startCapture(const string& deviceName,const string& filterExpr,int captureDuration) {
     char errbuf[PCAP_ERRBUF_SIZE];
 
     // 장치 이름을 저장
     this->deviceName = deviceName;
 
     // 장치 열기
-    handle = pcap_open_live(deviceName.c_str(), BUFSIZ, 1, 1000, errbuf);
+    handle = pcap_open_live(curdev->name, BUFSIZ, 1, 1000, errbuf);
     if (handle == nullptr) {
         cerr << "Error opening device: " << errbuf << endl;
         return false;
@@ -56,10 +57,11 @@ bool PacketCapture::startCapture(const string& deviceName,const string& filterEx
     saver = make_unique<PacketSaver>(handle);
     stats = make_unique<PacketStatistics>();
 
-    //timeout 쓰레드 시작
-    thread timeoutThread(&timeoutCapture, this, captureDuration);
+    //timeout 쓰레드 시작 race condition 발생 => 적절한 처리가 필요
+    thread timeoutThread(&PacketCapture::timeoutCapture, this, captureDuration);
     //패킷 캡쳐 시작
-    if (pcap_loop(handle, 0, packetHandler, (u_char*)this) < 0) {
+    captureActive.store(true);
+    if (pcap_loop(handle, 0, packetHandler, (u_char*)this) < 0&&captureActive.load()) {
         cerr << "Error capturing packets: " << pcap_geterr(handle) << endl;
         return false;
     }
@@ -82,15 +84,15 @@ void PacketCapture::timeoutCapture(int captureDuration)
     if (captureDuration > 0) {
         this_thread::sleep_for(chrono::seconds(captureDuration));
         stopCapture();
-}
+    }
 }
 
 // 캡처 종료
 void PacketCapture::stopCapture() {
     if (handle) {
+        captureActive.store(false);
         pcap_close(handle);
         handle = nullptr;
-        captureActive.store(false);
         cout << "Capture stopped." << endl;
         stats->printStats();
     }
@@ -105,12 +107,19 @@ bool PacketCapture::listDevices()
     }
 
     int cnt = 1;
-    for(pcap_if_t* dev = alldevs;dev!=nullptr;dev->next)
+    for(pcap_if_t* dev = alldevs;dev!=nullptr;dev = dev->next)
         cout<<cnt++<<": "<<dev->name<<" - " << (dev->description ? dev->description : "No description") << std::endl;
     return true;
 }
 
-void PacketCapture::replayPacket(const string& fileName="") const
+void PacketCapture::selectDev(const int n)
+{
+    int i;
+    for (curdev = alldevs, i = 0; i < n - 1; curdev = curdev->next, i++);
+    cout << curdev->description << endl;
+}
+
+void PacketCapture::replayPacket(const string& fileName) const
 {
     if (fileName.empty()) {
         cerr << "Not select file!" << endl;
@@ -178,46 +187,63 @@ bool PacketFilter::setFilter(pcap_t* handle) const
 /*
     PacketAnalyzer class
 */
-PacketAnalyzer::PacketAnalyzer()
-{
-    this->isARP = false;
-    this->isEthernet = false;
-    this->isIP = false;
-    this->isTCP = false;
-    this->isUDP = false;
-}
+// 내부 구현 클래스 정의
+class PacketAnalyzerImpl {
+public:
+    std::unique_ptr<Ethernet> ethernet;
+    std::unique_ptr<IP> ip;
+    std::unique_ptr<TCP> tcp;
+    std::unique_ptr<UDP> udp;
+    bool isEthernet;
+    bool isIP;
+    bool isTCP;
+    bool isUDP;
+    bool isARP;
 
+    PacketAnalyzerImpl()
+        : ethernet(std::make_unique<Ethernet>()),
+        ip(std::make_unique<IP>()),
+        tcp(std::make_unique<TCP>()),
+        udp(std::make_unique<UDP>()),
+        isEthernet(false), isIP(false), isTCP(false), isUDP(false), isARP(false) {
+    }
+    ~PacketAnalyzerImpl() = default;
+};
+PacketAnalyzer::PacketAnalyzer()
+    : impl(std::make_unique<PacketAnalyzerImpl>()) {
+}
+PacketAnalyzer::~PacketAnalyzer() = default;
 
 void PacketAnalyzer::analyzePacket(const u_char* packet, const pcap_pkthdr* pkthdr)
 {
-    ethernet = Ethernet(packet);
-    isEthernet = true;
+    impl->ethernet = make_unique<Ethernet>(packet);
+    impl->isEthernet = true;
 
     EtherHeader* eth = (EtherHeader*)packet;
     if (ntohs(eth->type) == 0x0800) {
-        ip = IP(packet);
-        isIP = true;
+        impl->ip = make_unique<IP>(packet);
+        impl->isIP = true;
 
         IpHeader* iph = (IpHeader*)(packet + sizeof(EtherHeader));
         if (iph->protocol == 6) {
-            tcp = TCP(packet);
-            isTCP = true;
+            impl->tcp = make_unique<TCP>(packet);
+            impl->isTCP = true;
         }
         else if (iph->protocol == 1) {}
         else if (iph->protocol == 2) {}
         else if (iph->protocol == 17) {
-            udp = UDP(packet);
-            isUDP = true;
+            impl->udp = make_unique<UDP>(packet);
+            impl->isUDP = true;
         }
     }
 }
 
 void PacketAnalyzer::printPacketData(const u_char* packet, const pcap_pkthdr* pkthdr)
 {
-    if (isEthernet) ethernet.printEthernet();
-    if (isIP) ip.printIP();
-    if (isTCP) tcp.printTCP();
-    if (isUDP) udp.printUDP();
+    if (impl->isEthernet) impl->ethernet->printEthernet();
+    if (impl->isIP) impl->ip->printIP();
+    if (impl->isTCP) impl->tcp->printTCP();
+    if (impl->isUDP) impl->udp->printUDP();
 }
 
 /*
@@ -274,7 +300,7 @@ void PacketStatistics::updateStats(const u_char* packet)
 void PacketStatistics::printStats() const
 {
     for (const auto& data : stats)
-        std::cout << data.first << ": " << data.second << std::endl;
+        cout << data.first << ": " << data.second << endl;
 }
 
 unordered_map<string, int> PacketStatistics::getStats() const

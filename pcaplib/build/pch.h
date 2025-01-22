@@ -1,21 +1,17 @@
 ﻿#ifndef PCH_H
 #define PCH_H
 
-#define WIN32_LEAN_AND_MEAN             // 거의 사용되지 않는 내용을 Windows 헤더에서 제외합니다.
-#include <WinSock2.h>
-#include <tchar.h>
+#define WIN32_LEAN_AND_MEAN   
 
-#include <atomic>
+#include <cstdint>
 #include <iostream>
 #include <vector>
-#include <unordered_map>
 #include <iomanip>
-#include <string>
-#include <pcap.h>
 #include <time.h>
 #include <thread>
 #include <chrono>
-
+#include <WinSock2.h>
+#include <tchar.h>
 #pragma comment(lib,"wpcap")
 #pragma comment(lib, "ws2_32")
 

@@ -85,14 +85,15 @@ void UDP::printUDP() const
 /*
 	ARP class
 */
-ARP::ARP(const u_char* packet)
+/*ARP::ARP(const u_char* packet)
 {
+	arph=(UdpHeader*)(packet + sizeof(EtherHeader));
 }
 
 void ARP::printARP() const
 {
 }
-
+*/
 /*
 	HttpAnalyzer class
 */

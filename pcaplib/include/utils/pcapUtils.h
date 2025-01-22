@@ -2,7 +2,7 @@
 
 class Ethernet {
 public:
-	Ethernet() {}
+	Ethernet() : eth(nullptr) {}
 	Ethernet(const u_char* packet);
 
 	void printEthernet() const;
@@ -12,12 +12,12 @@ private:
 
 private:
 	EtherHeader* eth;
-	U8 srcMac[6];
-	U8 dstMac[6];
+	uint8_t srcMac[6];
+	uint8_t dstMac[6];
 };
 class IP {
 public:
-	IP() {}
+	IP() :iph(nullptr) {}
 	IP(const u_char* packet);
 	
 	void printIP() const;
@@ -31,7 +31,7 @@ private:
 
 class TCP {
 public:
-	TCP() {}
+	TCP() :tcph(nullptr){}
 	TCP(const u_char* packet);
 
 	void printTCP() const;
@@ -44,7 +44,7 @@ private:
 
 class UDP {
 public:
-	UDP() {}
+	UDP() :udph(nullptr){}
 	UDP(const u_char* packet);
 
 	void printUDP() const;
@@ -55,9 +55,9 @@ private:
 	U16 dstPort;
 };
 
-class ARP {
+/*class ARP {
 public:
-	ARP() {}
+	ARP() :arph(nullptr){}
 	ARP(const u_char* packet);
 
 	void printARP() const;
@@ -66,7 +66,7 @@ private:
 	ArpHeader* arph;
 	U32 srcIp;
 	U32 dstIp;
-};
+};*/
 
 class HttpAnalyzer {
 public:
