@@ -5,18 +5,22 @@
 #include <WinSock2.h>
 #include <tchar.h>
 
+#include <atomic>
 #include <iostream>
 #include <vector>
+#include <unordered_map>
 #include <iomanip>
 #include <string>
 #include <pcap.h>
 #include <time.h>
+#include <thread>
+#include <chrono>
 
 #pragma comment(lib,"wpcap")
 #pragma comment(lib, "ws2_32")
 
 #include "../include/types/Types.h"
-#include "../include/protocols/ether.h"
+#include "../include/protocols/protocols.h"
 
 using namespace std;
 #endif //PCH_H ==#pragma once와 같은 기능이다.

@@ -36,7 +36,7 @@
     <ClCompile Include="src\pcaplib.cpp">
       <Filter>src</Filter>
     </ClCompile>
-    <ClCompile Include="src\protocols\ether.cpp" />
+    <ClCompile Include="src\utils\pcapUtils.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="build\pch.h">
@@ -48,6 +48,7 @@
     <ClInclude Include="include\types\Types.h">
       <Filter>include\types</Filter>
     </ClInclude>
-    <ClInclude Include="include\protocols\ether.h" />
+    <ClInclude Include="include\protocols\protocols.h" />
+    <ClInclude Include="include\utils\pcapUtils.h" />
   </ItemGroup>
 </Project>
