@@ -12,8 +12,8 @@ private:
 
 private:
 	EtherHeader* eth;
-	uint8_t srcMac[6];
-	uint8_t dstMac[6];
+	U8 srcMac[6];
+	U8 dstMac[6];
 };
 class IP {
 public:

@@ -6,8 +6,8 @@
 */
 // 생성자
 PacketCapture::PacketCapture() 
-    : curdev(nullptr), handle(nullptr), alldevs(nullptr), filter(make_unique<PacketFilter>()),
-      saver(nullptr), analyzer(make_unique<PacketAnalyzer>()) {}
+    : handle(nullptr), alldevs(nullptr), filter(make_unique<PacketFilter>()),
+      saver(nullptr), analyzer(make_unique<PacketAnalyzer>()), captureActive(false) {}
 
 // 소멸자
 PacketCapture::~PacketCapture() {
@@ -28,13 +28,6 @@ bool PacketCapture::initialize() {
         return false;
     }
 #endif
-
-    if (pcap_findalldevs(&alldevs, errbuf) == -1) {
-        cerr << "Error finding devices: " << errbuf << endl;
-        return false;
-    }
-
-    // Npcap 초기화가 성공적으로 되었으면 true 반환
     return true;
 }
 
@@ -42,11 +35,8 @@ bool PacketCapture::initialize() {
 bool PacketCapture::startCapture(const string& deviceName,const string& filterExpr,int captureDuration) {
     char errbuf[PCAP_ERRBUF_SIZE];
 
-    // 장치 이름을 저장
-    this->deviceName = deviceName;
-
     // 장치 열기
-    handle = pcap_open_live(curdev->name, BUFSIZ, 1, 1000, errbuf);
+    handle = pcap_open_live(deviceName.c_str(), BUFSIZ, 1, 1000, errbuf);
     if (handle == nullptr) {
         cerr << "Error opening device: " << errbuf << endl;
         return false;
@@ -56,27 +46,30 @@ bool PacketCapture::startCapture(const string& deviceName,const string& filterEx
     //filter에 expr를 설정하지 않아도 되는지??
     saver = make_unique<PacketSaver>(handle);
     stats = make_unique<PacketStatistics>();
-
+    
     //timeout 쓰레드 시작 race condition 발생 => 적절한 처리가 필요
-    thread timeoutThread(&PacketCapture::timeoutCapture, this, captureDuration);
+    //thread timeoutThread(&PacketCapture::timeoutCapture, this, captureDuration);
     //패킷 캡쳐 시작
     captureActive.store(true);
-    if (pcap_loop(handle, 0, packetHandler, (u_char*)this) < 0&&captureActive.load()) {
-        cerr << "Error capturing packets: " << pcap_geterr(handle) << endl;
-        return false;
-    }
     
-    timeoutThread.join();
+    //timeoutThread.join();
     return true;
 }
 
 // 패킷 핸들러
 void PacketCapture::packetHandler(u_char* userData, const struct pcap_pkthdr* pkthdr, const u_char* packet) {
-    PacketCapture* capture = reinterpret_cast<PacketCapture*>(userData);
+    auto callback = reinterpret_cast<std::function<void(const std::string&)>*>(userData);
+    std::ostringstream oss;
+    oss << "Packet length: " << pkthdr->len << " bytes";
+    (*callback)(oss.str());
+    
+    
+    
+    /*PacketCapture* capture = reinterpret_cast<PacketCapture*>(userData);
     capture->analyzer->analyzePacket(packet, pkthdr);
     capture->analyzer->printPacketData(packet, pkthdr);
     capture->saver->dumpPacket(pkthdr, packet);
-    capture->stats->updateStats(packet);
+    capture->stats->updateStats(packet);*/
 }
 
 void PacketCapture::timeoutCapture(int captureDuration)
@@ -98,26 +91,22 @@ void PacketCapture::stopCapture() {
     }
 }
 
-//모든 network 디바이스 출력
+//모든 network 디바이스 deviceNames에 저장
 bool PacketCapture::listDevices()
 {
-    if (alldevs == nullptr) {
-        cerr << "No devices found!" << endl;
+    char errbuf[PCAP_ERRBUF_SIZE];
+    if (pcap_findalldevs(&alldevs, errbuf) == -1) {
+        cerr << "Error finding devices: " << errbuf << endl;
         return false;
     }
+    deviceNames.clear();
 
-    int cnt = 1;
-    for(pcap_if_t* dev = alldevs;dev!=nullptr;dev = dev->next)
-        cout<<cnt++<<": "<<dev->name<<" - " << (dev->description ? dev->description : "No description") << std::endl;
-    return true;
+    for (pcap_if_t* dev = alldevs; dev; dev = dev->next)
+        if (dev->name)  deviceNames.push_back(dev->name);
+
+    return !deviceNames.empty();
 }
 
-void PacketCapture::selectDev(const int n)
-{
-    int i;
-    for (curdev = alldevs, i = 0; i < n - 1; curdev = curdev->next, i++);
-    cout << curdev->description << endl;
-}
 
 void PacketCapture::replayPacket(const string& fileName) const
 {
@@ -136,6 +125,21 @@ void PacketCapture::replayPacket(const string& fileName) const
         std::cout << "Replaying packet of length: " << header->len << std::endl;
     }
     pcap_close(replayHandle);
+}
+
+vector<string> PacketCapture::getDeviceNames() const
+{
+    return deviceNames;
+}
+
+bool PacketCapture::processPackets(const std::function<void(const std::string&)>& callback)
+{
+    char errbuf[PCAP_ERRBUF_SIZE];
+    if (pcap_loop(handle, 0, packetHandler, (u_char*)(&callback)) < 0 && captureActive.load()) {
+        cerr << "Error capturing packets: " << pcap_geterr(handle) << endl;
+        return false;
+    }
+    return true;
 }
 
 bool PacketCapture::LoadNpcapDlls()

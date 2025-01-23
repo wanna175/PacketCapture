@@ -4,6 +4,8 @@
 #include <unordered_map> // 추가
 #include <memory>
 #include <atomic>
+#include <functional>
+#include <sstream>
 class PacketAnalyzerImpl;
 using namespace std;
 
@@ -63,10 +65,14 @@ public:
 
     //network device 출력
     bool listDevices();
-    //dev select
-    void selectDev(const int n);
     //pcap file 읽기
     void replayPacket(const string& fileName = "") const;
+
+    // 디바이스 목록 반환
+    std::vector<std::string> getDeviceNames() const;
+
+    // 패킷 처리 콜백
+    bool processPackets(const std::function<void(const std::string&)>& callback);
 private:
     // 패킷 핸들러 등록
     static void packetHandler(u_char* userData, const struct pcap_pkthdr* pkthdr, const u_char* packet);
@@ -75,14 +81,13 @@ private:
     bool LoadNpcapDlls();
 
 private:
-    pcap_if_t* curdev;
     pcap_if_t* alldevs; //network devices
     pcap_t* handle;   // 캡처 핸들
-    string deviceName; // 캡처할 네트워크 장치 이름
     unique_ptr<PacketFilter> filter;
     unique_ptr<PacketSaver> saver;
     unique_ptr<PacketAnalyzer> analyzer;
     unique_ptr<PacketStatistics> stats;
+    vector<std::string> deviceNames;
     atomic<bool> captureActive;
 };
 
