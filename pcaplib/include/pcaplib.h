@@ -69,7 +69,7 @@ public:
     void replayPacket(const string& fileName = "") const;
 
     // 디바이스 목록 반환
-    std::vector<std::string> getDeviceNames() const;
+    unordered_map<string,string> getDeviceNames() const;
 
     // 패킷 처리 콜백
     bool processPackets(const std::function<void(const std::string&)>& callback);
@@ -87,7 +87,7 @@ private:
     unique_ptr<PacketSaver> saver;
     unique_ptr<PacketAnalyzer> analyzer;
     unique_ptr<PacketStatistics> stats;
-    vector<std::string> deviceNames;
+    unordered_map<string,string> deviceNames;
     atomic<bool> captureActive;
 };
 

@@ -58,18 +58,18 @@ bool PacketCapture::startCapture(const string& deviceName,const string& filterEx
 
 // 패킷 핸들러
 void PacketCapture::packetHandler(u_char* userData, const struct pcap_pkthdr* pkthdr, const u_char* packet) {
-    auto callback = reinterpret_cast<std::function<void(const std::string&)>*>(userData);
-    std::ostringstream oss;
-    oss << "Packet length: " << pkthdr->len << " bytes";
-    (*callback)(oss.str());
-    
-    
-    
-    /*PacketCapture* capture = reinterpret_cast<PacketCapture*>(userData);
-    capture->analyzer->analyzePacket(packet, pkthdr);
+    // userData에서 PacketCapture와 콜백 함수 추출
+    auto* data = reinterpret_cast<std::pair<PacketCapture*, std::function<void(const std::string&)>>*>(userData);
+    PacketCapture* capture = data->first;
+    auto& callback = data->second;
+    /*capture->analyzer->analyzePacket(packet, pkthdr);
     capture->analyzer->printPacketData(packet, pkthdr);
     capture->saver->dumpPacket(pkthdr, packet);
     capture->stats->updateStats(packet);*/
+    
+    std::ostringstream oss;
+    oss << "Packet length: " << pkthdr->len << " bytes";
+    (callback)(oss.str());
 }
 
 void PacketCapture::timeoutCapture(int captureDuration)
@@ -102,7 +102,7 @@ bool PacketCapture::listDevices()
     deviceNames.clear();
 
     for (pcap_if_t* dev = alldevs; dev; dev = dev->next)
-        if (dev->name)  deviceNames.push_back(dev->name);
+        if (dev->name)  deviceNames[dev->name] = (dev->description?dev->description:"식별되지 않은 네트워크 장비");
 
     return !deviceNames.empty();
 }
@@ -127,7 +127,7 @@ void PacketCapture::replayPacket(const string& fileName) const
     pcap_close(replayHandle);
 }
 
-vector<string> PacketCapture::getDeviceNames() const
+unordered_map<string,string> PacketCapture::getDeviceNames() const
 {
     return deviceNames;
 }
@@ -135,7 +135,8 @@ vector<string> PacketCapture::getDeviceNames() const
 bool PacketCapture::processPackets(const std::function<void(const std::string&)>& callback)
 {
     char errbuf[PCAP_ERRBUF_SIZE];
-    if (pcap_loop(handle, 0, packetHandler, (u_char*)(&callback)) < 0 && captureActive.load()) {
+    std::pair<PacketCapture*, std::function<void(const std::string&)>> pair = { this, callback };
+    if (pcap_loop(handle, 0, packetHandler, (u_char*)(&pair)) < 0 && captureActive.load()) {
         cerr << "Error capturing packets: " << pcap_geterr(handle) << endl;
         return false;
     }

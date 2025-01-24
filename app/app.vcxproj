@@ -156,6 +156,20 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="app.cpp" />
+    <ClCompile Include="CustomEvents.cpp" />
+    <ClCompile Include="DetailsDialog.cpp" />
+    <ClCompile Include="DeviceSelectionPanel.cpp" />
+    <ClCompile Include="FilterDialog.cpp" />
+    <ClCompile Include="MainFrame.cpp" />
+    <ClCompile Include="PacketCapturePanel.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="CustomEvents.h" />
+    <ClInclude Include="DetailsDialog.h" />
+    <ClInclude Include="DeviceSelectionPanel.h" />
+    <ClInclude Include="FilterDialog.h" />
+    <ClInclude Include="MainFrame.h" />
+    <ClInclude Include="PacketCapturePanel.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
