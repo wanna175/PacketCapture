@@ -7,3 +7,4 @@ using ULONG = unsigned long;  // 32/64-bit depending on platform
 using U64 = unsigned long long; // 64-bit
 using FLOAT = float;           // 32-bit floating point
 using DOUBLE = double;          // 64-bit floating point
+

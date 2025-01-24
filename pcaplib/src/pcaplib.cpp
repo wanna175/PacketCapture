@@ -1,9 +1,9 @@
 #include "pch.h"
 #include "pcaplib.h"
 #include "../include/utils/pcapUtils.h"
-/*
-    PacketCapture class 
-*/
+/************************************
+    PacketCapture class
+*************************************/
 // 생성자
 PacketCapture::PacketCapture() 
     : handle(nullptr), alldevs(nullptr), filter(make_unique<PacketFilter>()),
@@ -59,7 +59,7 @@ bool PacketCapture::startCapture(const string& deviceName,const string& filterEx
 // 패킷 핸들러
 void PacketCapture::packetHandler(u_char* userData, const struct pcap_pkthdr* pkthdr, const u_char* packet) {
     // userData에서 PacketCapture와 콜백 함수 추출
-    auto* data = reinterpret_cast<std::pair<PacketCapture*, std::function<void(const std::string&)>>*>(userData);
+    auto* data = reinterpret_cast<std::pair<PacketCapture*, std::function<void(const PacketData&)>>*>(userData);
     PacketCapture* capture = data->first;
     auto& callback = data->second;
     /*capture->analyzer->analyzePacket(packet, pkthdr);
@@ -69,7 +69,7 @@ void PacketCapture::packetHandler(u_char* userData, const struct pcap_pkthdr* pk
     
     std::ostringstream oss;
     oss << "Packet length: " << pkthdr->len << " bytes";
-    (callback)(oss.str());
+    //(callback)(oss.str());
 }
 
 void PacketCapture::timeoutCapture(int captureDuration)
@@ -132,10 +132,10 @@ unordered_map<string,string> PacketCapture::getDeviceNames() const
     return deviceNames;
 }
 
-bool PacketCapture::processPackets(const std::function<void(const std::string&)>& callback)
+bool PacketCapture::processPackets(const std::function<void(const PacketData&)>& callback)
 {
     char errbuf[PCAP_ERRBUF_SIZE];
-    std::pair<PacketCapture*, std::function<void(const std::string&)>> pair = { this, callback };
+    std::pair<PacketCapture*, std::function<void(const PacketData&)>> pair = { this, callback };
     if (pcap_loop(handle, 0, packetHandler, (u_char*)(&pair)) < 0 && captureActive.load()) {
         cerr << "Error capturing packets: " << pcap_geterr(handle) << endl;
         return false;
@@ -164,9 +164,13 @@ bool PacketCapture::LoadNpcapDlls()
     return true;
 }
 
-/*
+
+
+
+
+/************************************
     PacketFilter class
-*/
+*************************************/
 //생성자
 PacketFilter::PacketFilter(const string& filter) : filterExpression(filter){}
 
@@ -189,9 +193,13 @@ bool PacketFilter::setFilter(pcap_t* handle) const
     return true;
 }
 
-/*
+
+
+
+
+/************************************
     PacketAnalyzer class
-*/
+*************************************/
 // 내부 구현 클래스 정의
 class PacketAnalyzerImpl {
 public:
@@ -219,26 +227,26 @@ PacketAnalyzer::PacketAnalyzer()
 }
 PacketAnalyzer::~PacketAnalyzer() = default;
 
-void PacketAnalyzer::analyzePacket(const u_char* packet, const pcap_pkthdr* pkthdr)
+PacketData PacketAnalyzer::analyzePacket(const u_char* packet, const pcap_pkthdr* pkthdr)
 {
+    PacketData data;
+    string info = "";
+    //일단은 ethernet protocol이라고 가정하고 시작한다.====나중에 수정필요
+    
     impl->ethernet = make_unique<Ethernet>(packet);
-    impl->isEthernet = true;
-
     EtherHeader* eth = (EtherHeader*)packet;
+
     if (ntohs(eth->type) == 0x0800) {
         impl->ip = make_unique<IP>(packet);
-        impl->isIP = true;
 
         IpHeader* iph = (IpHeader*)(packet + sizeof(EtherHeader));
         if (iph->protocol == 6) {
             impl->tcp = make_unique<TCP>(packet);
-            impl->isTCP = true;
         }
         else if (iph->protocol == 1) {}
         else if (iph->protocol == 2) {}
         else if (iph->protocol == 17) {
             impl->udp = make_unique<UDP>(packet);
-            impl->isUDP = true;
         }
     }
 }
@@ -251,9 +259,12 @@ void PacketAnalyzer::printPacketData(const u_char* packet, const pcap_pkthdr* pk
     if (impl->isUDP) impl->udp->printUDP();
 }
 
-/*
+
+
+
+/************************************
     PacketSaver class
-*/
+*************************************/
 //생성자 : dumpfile 초기화
 PacketSaver::PacketSaver(pcap_t* handle) : dumper(nullptr)
 {
@@ -282,9 +293,12 @@ void PacketSaver::closeDumper() {
     if (dumper) pcap_dump_close(dumper);
 }
 
-/*
+
+
+
+/************************************
     PacketStatistics class
-*/
+*************************************/
 void PacketStatistics::updateStats(const u_char* packet)
 {
     ++stats["Ether"];

@@ -36,12 +36,25 @@ void PacketCapturePanel::OnBackButtonClicked(wxCommandEvent& event) {
 inline void PacketCapturePanel::capturePackets() {
     capturedPacketDetails.clear();
     packetGrid->ClearGrid();
-    capture->processPackets([this](const std::string& packetInfo) {
+    
+    capture->processPackets([this](const PacketData& packetInfo) {
+        
         CallAfter([this, packetInfo]() {
+            int cur = packetInfo.getNum();
             packetGrid->AppendRows(1);
-            packetGrid->SetCellValue(0, 0, wxString::FromUTF8(packetInfo));
-            capturedPacketDetails.push_back(packetInfo);
+            packetGrid->SetCellValue(cur, 0, wxString::FromUTF8(to_string(packetInfo.getNum())));
+            packetGrid->SetCellValue(cur, 1, wxString::FromUTF8(packetInfo.getTime()));
+            packetGrid->SetCellValue(cur, 2, wxString::FromUTF8(packetInfo.getSrc()));
+            packetGrid->SetCellValue(cur, 3, wxString::FromUTF8(packetInfo.getDst()));
+            packetGrid->SetCellValue(cur, 4, wxString::FromUTF8(packetInfo.getProtocol()));
+            packetGrid->SetCellValue(cur, 5, wxString::FromUTF8(packetInfo.getLength()));
+            packetGrid->SetCellValue(cur, 6, wxString::FromUTF8(packetInfo.getInfo()));
+            capturedPacketDetails.push_back(packetInfo.getInfo());
+            //// 새로 추가된 행이 보이도록 스크롤
+            packetGrid->MakeCellVisible(cur, 0);
             });
+        
+
         });
 }
 
@@ -111,7 +124,6 @@ inline void PacketCapturePanel::InitUI() {
     packetGrid->HideRowLabels();
     
     AdjustColumnWidths();
-
     mainSizer->Add(packetGrid, 1, wxEXPAND | wxALL, 10);
 
     // 시작, 정지 버튼

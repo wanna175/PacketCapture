@@ -15,17 +15,7 @@
 #include <vector>
 #include <string>
 #include "pcaplib.h"
-// 패킷 데이터 구조체 정의
-struct PacketData {
-    int number;
-    string time;
-    string source;
-    string destination;
-    string protocol;
-    int length;
-    string info;
-    string rawData;  // 원본 패킷 데이터
-};
+
 class PacketCapturePanel : public wxPanel {
 public:
     PacketCapturePanel(wxWindow* parent,const string& dev);

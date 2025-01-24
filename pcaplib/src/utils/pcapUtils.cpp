@@ -1,35 +1,75 @@
 #include "pch.h"
 #include "../Include/utils/pcapUtils.h"
 
-/*
+/********************************
 	protocol Utils class
-*/
+*********************************/
 
-/*
+/********************************
 	Ethernet class
-*/
-Ethernet::Ethernet(const u_char* packet)
-{
-	eth = (EtherHeader*)packet;
-	memcpy(srcMac, eth->srcMac, sizeof(srcMac));
-	memcpy(dstMac, eth->dstMac, sizeof(dstMac));
-}
+*********************************/
 
+Ethernet::Ethernet(const u_char* packet) {
+	eth = reinterpret_cast<const EtherHeader*>(packet);
+
+	// MAC 주소 파싱
+	srcMac = macToString(eth->srcMac);
+	dstMac = macToString(eth->dstMac);
+
+	// 다음 프로토콜
+	nextProtocol = ntohs(eth->type);
+}
 void Ethernet::printEthernet() const
 {
-	cout << "Ethernet Header:\n";
-	cout << "Source MAC: " << etherToString(srcMac) << endl;
-	cout << "Destination MAC: " << etherToString(dstMac) << endl;
+	cout << "Ethernet II:" << endl;
+	cout << "  Source MAC: " << srcMac << endl;
+	cout << "  Destination MAC: " << dstMac << endl;
+	cout << "  Type: " << protocolToString(nextProtocol) << " (" << hex << "0x" << nextProtocol << dec << ")" << endl;
 }
 
-string Ethernet::etherToString(const u_char* mac) const
-{
-	char str[18];
-	snprintf(str, sizeof(str), "%02X:%02X:%02X:%02X:%02X:%02X",
-		mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]);
-	return std::string(str);
+// Source MAC 반환
+string Ethernet::getSourceMac() const {
+	return srcMac;
 }
 
+// Destination MAC 반환
+string Ethernet::getDestinationMac() const {
+	return dstMac;
+}
+
+// 다음 프로토콜 반환
+U16 Ethernet::getNextProtocol() const {
+	return nextProtocol;
+}
+
+// 다음 프로토콜의 문자열 반환
+string Ethernet::getNextProtocolString() const {
+	return protocolToString(nextProtocol);
+}
+// MAC 주소를 문자열로 변환
+string Ethernet::macToString(const unsigned char* mac) const {
+	stringstream ss;
+	for (int i = 0; i < 6; i++) {
+		ss << hex << setw(2) << setfill('0') << static_cast<int>(mac[i]);
+		if (i != 5)
+			ss << ":";
+	}
+	return ss.str();
+}
+
+// EtherType에 따라 프로토콜을 문자열로 변환
+string Ethernet::protocolToString(uint16_t protocol) const {
+	switch (protocol) {
+	case 0x0800:
+		return "IPv4";
+	case 0x0806:
+		return "ARP";
+	case 0x86DD:
+		return "IPv6";
+	default:
+		return "Unknown";
+	}
+}
 /*
 	IP class
 */
@@ -206,3 +246,7 @@ string TlsAnalyzer::parseCipherSuite(const u_char* data, size_t length)
 	default: return "Unknown Cipher Suite";
 	}
 }
+
+
+
+

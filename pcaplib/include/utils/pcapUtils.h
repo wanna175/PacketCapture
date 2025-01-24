@@ -2,18 +2,39 @@
 
 class Ethernet {
 public:
-	Ethernet() : eth(nullptr) {}
-	Ethernet(const u_char* packet);
+    Ethernet() : eth(nullptr), nextProtocol(0) {}
 
-	void printEthernet() const;
+    // 생성자: 패킷 데이터를 기반으로 초기화
+    Ethernet(const u_char* packet);
+
+    // Ethernet 정보를 출력
+    void printEthernet() const;
+
+    // Source MAC 반환
+	string getSourceMac() const;
+
+    // Destination MAC 반환
+	string getDestinationMac() const;
+
+    // 다음 프로토콜 반환
+	U16 getNextProtocol() const;
+
+    // 다음 프로토콜의 문자열 반환
+	string getNextProtocolString() const;
 
 private:
-	string etherToString(const u_char* mac) const;
+    // MAC 주소를 문자열로 변환
+	string macToString(const unsigned char* mac) const;
 
+    // EtherType에 따라 프로토콜을 문자열로 변환
+	string protocolToString(uint16_t protocol) const;
 private:
-	EtherHeader* eth;
-	U8 srcMac[6];
-	U8 dstMac[6];
+    const EtherHeader* eth; // Ethernet 헤더 구조체
+    string srcMac;
+    string dstMac;
+    uint16_t nextProtocol; // 다음 프로토콜 (EtherType)
+
+    
 };
 class IP {
 public:
