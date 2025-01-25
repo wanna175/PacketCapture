@@ -206,19 +206,12 @@ public:
     std::unique_ptr<IP> ip;
     std::unique_ptr<TCP> tcp;
     std::unique_ptr<UDP> udp;
-    bool isEthernet;
-    bool isIP;
-    bool isTCP;
-    bool isUDP;
-    bool isARP;
 
     PacketAnalyzerImpl()
         : ethernet(std::make_unique<Ethernet>()),
         ip(std::make_unique<IP>()),
         tcp(std::make_unique<TCP>()),
-        udp(std::make_unique<UDP>()),
-        isEthernet(false), isIP(false), isTCP(false), isUDP(false), isARP(false) {
-    }
+        udp(std::make_unique<UDP>()){}
     ~PacketAnalyzerImpl() = default;
 };
 PacketAnalyzer::PacketAnalyzer()
@@ -239,20 +232,42 @@ PacketData PacketAnalyzer::analyzePacket(const u_char* packet, const pcap_pkthdr
 
     PacketData data;
     string info = "";
+
+    data.setNum(this->seq);
+    data.setTime(timestr);
+    (this->seq)++;
+
     //L2 layer : Data link layer
     //일단은 ethernet protocol이라고 가정하고 시작한다.====나중에 수정필요
     
     impl->ethernet = make_unique<Ethernet>(packet);
     info.append(impl->ethernet->printEthernet());
-    
-    data.setNum(this->seq);
-    data.setTime(timestr);
+
+    data.setProtocol("ethernet");
     data.setSrc(impl->ethernet->getSourceMac());
     data.setDst(impl->ethernet->getDestinationMac());
     data.setLength(to_string(pkthdr->len));
     data.setInfo(info);
 
-    (this->seq)++;
+    string nextProtocol = impl->ethernet->getNextProtocolString();
+    
+    //L3 Layer : Network layer
+    if (nextProtocol.compare("IPv4")|| nextProtocol.compare("IPv6")) {
+        impl->ip = make_unique<IP>(packet + sizeof(EtherHeader));
+        info.append(impl->ip->printIP());
+        data.setProtocol("IP");
+        data.setSrc(impl->ip->getSourceIP());
+        data.setDst(impl->ip->getDestinationIP());
+        data.setInfo(info);
+    }
+    else if (nextProtocol.compare("ARP")) {
+        data.setProtocol("ARP");
+        return data;
+    }
+    else {
+        return data;
+    }
+
     return data;
 }
 

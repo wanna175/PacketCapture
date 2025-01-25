@@ -32,41 +32,28 @@ public:
 	
 	//IP정보를 출력
 	string printIP() const;
-	string getSourceIP() const {
-		return srcIP;
-	}
+	string getSourceIP() const;
 
-	string getDestinationIP() const {
-		return dstIP;
-	}
+	string getDestinationIP() const;
 
-	uint8_t getProtocol() const {
-		return protocol;
-	}
+	U8 getProtocol() const;
 private:
-	string ipToString(U32 ip) const {
-		stringstream ss;
-		ss << ((ip >> 24) & 0xFF) << "."
-			<< ((ip >> 16) & 0xFF) << "."
-			<< ((ip >> 8) & 0xFF) << "."
-			<< (ip & 0xFF);
-		return ss.str();
-	}
+	string ipToString(const U8* ip) const;
 
-	string protocolToString(U8 proto) const {
-		switch (proto) {
-		case 1: return "ICMP";
-		case 2: return "IGMP";
-		case 6: return "TCP";
-		case 17: return "UDP";
-		default: return "Unknown";
-		}
-	}
+	string protocolToString(U8 proto) const;
+	string printIPv4() const;
+	string printIPv6() const;
+	string ipv6ToString(const U8* addr) const;
 private:
-	IpHeader* iph;
+	const IpHeader* iph;
+	const Ipv6Header* ip6h;
 	string srcIP;
 	string dstIP;
-	U8 protocol;
+	int ver;
+	int headerLen;
+	int totalLen;
+	U8 protocol;               // Protocol
+	U16 headerChecksum;        // Header Checksum
 };
 
 class TCP {
