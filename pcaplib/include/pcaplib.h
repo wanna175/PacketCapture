@@ -64,10 +64,10 @@ public:
     ~PacketAnalyzer();
 
     PacketData analyzePacket(const u_char* packet, const struct pcap_pkthdr* pkthdr);
-    void printPacketData(const u_char* packet, const struct pcap_pkthdr* pkthdr);
 
 private:
-    std::unique_ptr<PacketAnalyzerImpl> impl;
+    unique_ptr<PacketAnalyzerImpl> impl;
+    int seq;
 };
 /************************************
     PacketSaver class

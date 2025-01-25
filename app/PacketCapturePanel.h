@@ -39,18 +39,22 @@ private:
 
     void OnPacketDoubleClick(wxGridEvent& event);
 
+    void OnFilterButtonClick(wxCommandEvent& event);
+
     void AdjustColumnWidths();
 
 private:
-    wxListBox* packetList;
    /* wxBitmapButton* startButton;
     wxBitmapButton* stopButton;*/
-    wxButton* startButton;
-    wxButton* stopButton;
-    wxTextCtrl* packetLog;
-    wxGrid* packetGrid;
-    wxTextCtrl* rawPacketDisplay;
-    wxTextCtrl* detailedLogDisplay;
+    wxButton* startButton; //캡쳐 시작 버튼
+    wxButton* stopButton;  //캡쳐 중지 버튼
+    wxTextCtrl* packetLog; //패킷 디테일 화면
+    wxGrid* packetGrid;// 패킷 테이블
+    wxTextCtrl* filterTextCtrl;//필터 text
+    wxButton* filterButton; //필터 버튼
+    //wxTextCtrl* rawPacketDisplay;
+    //wxTextCtrl* detailedLogDisplay;
+    int selection = -1;
 
     std::unique_ptr<PacketCapture> capture;
     std::atomic<bool> isCapturing;

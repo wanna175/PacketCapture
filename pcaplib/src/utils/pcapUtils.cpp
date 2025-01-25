@@ -19,12 +19,14 @@ Ethernet::Ethernet(const u_char* packet) {
 	// 다음 프로토콜
 	nextProtocol = ntohs(eth->type);
 }
-void Ethernet::printEthernet() const
+string Ethernet::printEthernet() const
 {
-	cout << "Ethernet II:" << endl;
-	cout << "  Source MAC: " << srcMac << endl;
-	cout << "  Destination MAC: " << dstMac << endl;
-	cout << "  Type: " << protocolToString(nextProtocol) << " (" << hex << "0x" << nextProtocol << dec << ")" << endl;
+	stringstream ss;
+	ss << "Ethernet II:" << endl;
+	ss << "  Source MAC: " << srcMac << endl;
+	ss << "  Destination MAC: " << dstMac << endl;
+	ss << "  Type: " << protocolToString(nextProtocol) << " (" << hex << "0x" << nextProtocol << dec << ")" << endl;
+	return ss.str();
 }
 
 // Source MAC 반환
@@ -70,14 +72,16 @@ string Ethernet::protocolToString(uint16_t protocol) const {
 		return "Unknown";
 	}
 }
-/*
+/********************************
 	IP class
-*/
+*********************************/
 IP::IP(const u_char* packet)
 {
-	iph = (IpHeader*)(packet + sizeof(EtherHeader));
-	srcIp = static_cast<string>(reinterpret_cast<char*>(iph->srcIp));
-	dstIp = static_cast<string>(reinterpret_cast<char*>(iph->dstIp));
+	iph = reinterpret_cast<const IpHeader*>(packet);
+
+	srcIP = ipToString(iph->srcIp);
+	dstIP = ipToString(iph->dstIp);
+	protocol = ipHeader->protocol;
 }
 
 void IP::printIP() const

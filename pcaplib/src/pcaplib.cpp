@@ -59,17 +59,16 @@ bool PacketCapture::startCapture(const string& deviceName,const string& filterEx
 // 패킷 핸들러
 void PacketCapture::packetHandler(u_char* userData, const struct pcap_pkthdr* pkthdr, const u_char* packet) {
     // userData에서 PacketCapture와 콜백 함수 추출
-    auto* data = reinterpret_cast<std::pair<PacketCapture*, std::function<void(const PacketData&)>>*>(userData);
+    auto* data = reinterpret_cast<std::pair<PacketCapture*,std::function<void(const PacketData&)>>*>(userData);
     PacketCapture* capture = data->first;
     auto& callback = data->second;
-    /*capture->analyzer->analyzePacket(packet, pkthdr);
-    capture->analyzer->printPacketData(packet, pkthdr);
-    capture->saver->dumpPacket(pkthdr, packet);
-    capture->stats->updateStats(packet);*/
+    PacketData pd = capture->analyzer->analyzePacket(packet, pkthdr);
     
-    std::ostringstream oss;
-    oss << "Packet length: " << pkthdr->len << " bytes";
-    //(callback)(oss.str());
+    //capture->saver->dumpPacket(pkthdr, packet);
+    //capture->stats->updateStats(packet);
+    
+    callback(pd);
+    
 }
 
 void PacketCapture::timeoutCapture(int captureDuration)
@@ -135,7 +134,7 @@ unordered_map<string,string> PacketCapture::getDeviceNames() const
 bool PacketCapture::processPackets(const std::function<void(const PacketData&)>& callback)
 {
     char errbuf[PCAP_ERRBUF_SIZE];
-    std::pair<PacketCapture*, std::function<void(const PacketData&)>> pair = { this, callback };
+    std::pair<PacketCapture*,std::function<void(const PacketData&)>> pair = { this, callback };
     if (pcap_loop(handle, 0, packetHandler, (u_char*)(&pair)) < 0 && captureActive.load()) {
         cerr << "Error capturing packets: " << pcap_geterr(handle) << endl;
         return false;
@@ -223,40 +222,38 @@ public:
     ~PacketAnalyzerImpl() = default;
 };
 PacketAnalyzer::PacketAnalyzer()
-    : impl(std::make_unique<PacketAnalyzerImpl>()) {
+    : impl(std::make_unique<PacketAnalyzerImpl>()),seq(0) {
 }
 PacketAnalyzer::~PacketAnalyzer() = default;
 
 PacketData PacketAnalyzer::analyzePacket(const u_char* packet, const pcap_pkthdr* pkthdr)
 {
+    //time stamp 설정
+    struct tm ltime;
+    char timestr[16];
+    time_t local_tv_sec;
+
+    local_tv_sec = pkthdr->ts.tv_sec;
+    localtime_s(&ltime, &local_tv_sec);
+    strftime(timestr, sizeof timestr, "%H:%M:%S", &ltime);
+
     PacketData data;
     string info = "";
+    //L2 layer : Data link layer
     //일단은 ethernet protocol이라고 가정하고 시작한다.====나중에 수정필요
     
     impl->ethernet = make_unique<Ethernet>(packet);
-    EtherHeader* eth = (EtherHeader*)packet;
+    info.append(impl->ethernet->printEthernet());
+    
+    data.setNum(this->seq);
+    data.setTime(timestr);
+    data.setSrc(impl->ethernet->getSourceMac());
+    data.setDst(impl->ethernet->getDestinationMac());
+    data.setLength(to_string(pkthdr->len));
+    data.setInfo(info);
 
-    if (ntohs(eth->type) == 0x0800) {
-        impl->ip = make_unique<IP>(packet);
-
-        IpHeader* iph = (IpHeader*)(packet + sizeof(EtherHeader));
-        if (iph->protocol == 6) {
-            impl->tcp = make_unique<TCP>(packet);
-        }
-        else if (iph->protocol == 1) {}
-        else if (iph->protocol == 2) {}
-        else if (iph->protocol == 17) {
-            impl->udp = make_unique<UDP>(packet);
-        }
-    }
-}
-
-void PacketAnalyzer::printPacketData(const u_char* packet, const pcap_pkthdr* pkthdr)
-{
-    if (impl->isEthernet) impl->ethernet->printEthernet();
-    if (impl->isIP) impl->ip->printIP();
-    if (impl->isTCP) impl->tcp->printTCP();
-    if (impl->isUDP) impl->udp->printUDP();
+    (this->seq)++;
+    return data;
 }
 
 

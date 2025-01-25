@@ -103,11 +103,26 @@ inline void PacketCapturePanel::BindEvents() {
     startButton->Bind(wxEVT_BUTTON, &PacketCapturePanel::OnStartCapture, this);
     stopButton->Bind(wxEVT_BUTTON, &PacketCapturePanel::OnStopCapture, this);
     packetGrid->Bind(wxEVT_GRID_CELL_LEFT_CLICK, &PacketCapturePanel::OnPacketDoubleClick, this);
+    //filterTextCtrl->Bind(wxEVT_TEXT, &PacketCapturePanel::OnFilterTextChanged, this);
+    filterButton->Bind(wxEVT_BUTTON, &PacketCapturePanel::OnFilterButtonClick, this);
 }
 
 inline void PacketCapturePanel::InitUI() {
     wxBoxSizer* mainSizer = new wxBoxSizer(wxVERTICAL);
 
+    // 필터 입력 박스
+    wxBoxSizer* filterSizer = new wxBoxSizer(wxHORIZONTAL);
+    // 필터 라벨과 텍스트 입력 박스
+    filterTextCtrl = new wxTextCtrl(this, wxID_ANY, "", wxDefaultPosition, wxSize(300, -1));
+    filterSizer->Add(new wxStaticText(this, wxID_ANY, ""), 0, wxALIGN_CENTER_VERTICAL | wxALL, 0);
+    filterSizer->Add(filterTextCtrl, 1, wxEXPAND | wxALL, 0);
+
+    // 필터 버튼
+    filterButton = new wxButton(this, wxID_ANY, "=>");
+    filterSizer->Add(filterButton, 0, wxALIGN_CENTER_VERTICAL | wxALL, 0);
+
+    // 메인 레이아웃에 필터 UI 추가 (여백 없이)
+    mainSizer->Add(filterSizer, 0, wxEXPAND, 0);
     // 패킷 캡쳐 테이블
     packetGrid = new wxGrid(this, wxID_ANY);
     packetGrid->CreateGrid(0, 7);  // 7개의 열 (No., Time, Source, Destination, Protocol, Length, Info)
@@ -124,7 +139,7 @@ inline void PacketCapturePanel::InitUI() {
     packetGrid->HideRowLabels();
     
     AdjustColumnWidths();
-    mainSizer->Add(packetGrid, 1, wxEXPAND | wxALL, 10);
+    mainSizer->Add(packetGrid, 1, wxEXPAND | wxALL, 0);
 
     // 시작, 정지 버튼
     wxBoxSizer* buttonSizer = new wxBoxSizer(wxHORIZONTAL);
@@ -147,11 +162,31 @@ inline void PacketCapturePanel::InitUI() {
 }
 
 inline void PacketCapturePanel::OnPacketDoubleClick(wxGridEvent& event) {
-    int selection = event.GetRow();
+    int cur = event.GetRow();
+    // 선택한 행의 색상을 변경
+    for (int col = 0; col < packetGrid->GetNumberCols(); ++col) {
+        packetGrid->SetCellBackgroundColour(selection, col, *wxWHITE);
+        packetGrid->SetCellBackgroundColour(cur, col, *wxLIGHT_GREY);
+    }
+    selection = cur;
+
     packetLog->Clear();
     if (selection >=0 && selection < capturedPacketDetails.size()) {
         packetLog->AppendText("Details of Selected Packet:\n");
         packetLog->AppendText(wxString::FromUTF8(capturedPacketDetails[selection]) + "\n\n");
+    }
+    // 테이블 다시 그리기
+    packetGrid->ForceRefresh();
+
+    event.Skip();  // 기본 이벤트 처리 허용
+}
+// 필터 텍스트 변경 이벤트 핸들러
+void PacketCapturePanel::OnFilterButtonClick(wxCommandEvent& event) {
+    wxString filterText = filterTextCtrl->GetValue();
+
+    if (filterText.IsEmpty()) {
+        wxMessageBox("Please enter a filter value.", "Filter", wxOK | wxICON_INFORMATION);
+        return;
     }
 }
 // 열 너비를 화면 크기에 맞게 조정

@@ -1,38 +1,27 @@
 #pragma once
-
+#include <sstream>
 class Ethernet {
 public:
     Ethernet() : eth(nullptr), nextProtocol(0) {}
-
-    // 생성자: 패킷 데이터를 기반으로 초기화
     Ethernet(const u_char* packet);
 
     // Ethernet 정보를 출력
-    void printEthernet() const;
-
-    // Source MAC 반환
+    string printEthernet() const;
 	string getSourceMac() const;
-
-    // Destination MAC 반환
 	string getDestinationMac() const;
-
-    // 다음 프로토콜 반환
 	U16 getNextProtocol() const;
-
-    // 다음 프로토콜의 문자열 반환
 	string getNextProtocolString() const;
 
 private:
     // MAC 주소를 문자열로 변환
 	string macToString(const unsigned char* mac) const;
-
     // EtherType에 따라 프로토콜을 문자열로 변환
 	string protocolToString(uint16_t protocol) const;
 private:
     const EtherHeader* eth; // Ethernet 헤더 구조체
     string srcMac;
     string dstMac;
-    uint16_t nextProtocol; // 다음 프로토콜 (EtherType)
+    U16 nextProtocol; // 다음 프로토콜 (EtherType)
 
     
 };
@@ -41,12 +30,42 @@ public:
 	IP() :iph(nullptr) {}
 	IP(const u_char* packet);
 	
-	void printIP() const;
+	//IP정보를 출력
+	string printIP() const;
+	string getSourceIP() const {
+		return srcIP;
+	}
 
+	string getDestinationIP() const {
+		return dstIP;
+	}
+
+	uint8_t getProtocol() const {
+		return protocol;
+	}
+private:
+	string ipToString(U32 ip) const {
+		stringstream ss;
+		ss << ((ip >> 24) & 0xFF) << "."
+			<< ((ip >> 16) & 0xFF) << "."
+			<< ((ip >> 8) & 0xFF) << "."
+			<< (ip & 0xFF);
+		return ss.str();
+	}
+
+	string protocolToString(U8 proto) const {
+		switch (proto) {
+		case 1: return "ICMP";
+		case 2: return "IGMP";
+		case 6: return "TCP";
+		case 17: return "UDP";
+		default: return "Unknown";
+		}
+	}
 private:
 	IpHeader* iph;
-	string srcIp;
-	string dstIp;
+	string srcIP;
+	string dstIP;
 	U8 protocol;
 };
 
