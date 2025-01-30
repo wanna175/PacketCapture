@@ -1,5 +1,10 @@
 #pragma once
 #include <sstream>
+#include <bitset>
+
+/********************************
+	Ethernet class
+*********************************/
 class Ethernet {
 public:
     Ethernet() : eth(nullptr), nextProtocol(0) {}
@@ -25,6 +30,10 @@ private:
 
     
 };
+
+/********************************
+	IPv4 class
+*********************************/
 class IP {
 public:
 	IP() :iph(nullptr) {}
@@ -37,16 +46,13 @@ public:
 	string getDestinationIP() const;
 
 	U8 getProtocol() const;
+	string getNextProtocolString() const;
 private:
 	string ipToString(const U8* ip) const;
-
 	string protocolToString(U8 proto) const;
 	string printIPv4() const;
-	string printIPv6() const;
-	string ipv6ToString(const U8* addr) const;
 private:
 	const IpHeader* iph;
-	const Ipv6Header* ip6h;
 	string srcIP;
 	string dstIP;
 	int ver;
@@ -56,44 +62,106 @@ private:
 	U16 headerChecksum;        // Header Checksum
 };
 
+/********************************
+	IPv6 class
+*********************************/
+class IPv6 {
+public:
+	IPv6() :ip6h(nullptr) {}
+	IPv6(const u_char* packet);
+
+	//IP정보를 출력
+	string printIP() const;
+	string getSourceIP() const;
+
+	string getDestinationIP() const;
+	string getNextProtocolString() const;
+	U8 getProtocol() const;
+	const U8* getHeaderPointer(U8 nextHeader) const;
+	int getExtensionHeaderLength(const U8* header) const;
+	bool isExtensionHeader(U8 headerType) const;
+	U8 getNextHeader() const;
+	U8 getNextHeader(U8* header) const;
+private:
+	string protocolToString(U8 proto) const;
+	string printIPv6() const;
+	string ipv6ToString(const U8* addr) const;
+private:
+	const Ipv6Header* ip6h;
+	string srcIP;
+	string dstIP;
+	U8 protocol;               // Protocol
+};
+
+/********************************
+	TCP class
+*********************************/
 class TCP {
 public:
 	TCP() :tcph(nullptr){}
 	TCP(const u_char* packet);
 
-	void printTCP() const;
+	string formatTcpInfo() const;
+
+	string printTCP() const;
 
 private:
-	TcpHeader* tcph;
+	string parseTcpFlags(uint8_t flags) const;
+	string parseTcpHeader() const;
+	string getTcpFlags() const;
+private:
+	const TcpHeader* tcph;
 	U16 srcPort;
 	U16 dstPort;
 };
 
+/********************************
+	UDP class
+*********************************/
 class UDP {
 public:
 	UDP() :udph(nullptr){}
 	UDP(const u_char* packet);
 
-	void printUDP() const;
+	string formatUdpInfo() const;
+
+	string printUDP() const;
 
 private:
-	UdpHeader* udph;
+	const UdpHeader* udph;
 	U16 srcPort;
 	U16 dstPort;
 };
 
-/*class ARP {
+/********************************
+	ARP class
+*********************************/
+class ARP {
 public:
-	ARP() :arph(nullptr){}
+    // ARP Operation Codes
+    enum Opcode {
+        REQUEST = 1,
+        REPLY = 2
+    };
+
+    ARP():arph(nullptr){}
 	ARP(const u_char* packet);
 
-	void printARP() const;
+	string formatArpInfo() const ;
+
+	string printARP() const;
 
 private:
-	ArpHeader* arph;
-	U32 srcIp;
-	U32 dstIp;
-};*/
+    // MAC 주소를 문자열로 변환
+    string macToString(const U8* mac) const;
+
+    // IP 주소를 문자열로 변환
+    string ipToString(const U8* ip) const;
+
+private:
+	const ArpHeader* arph;
+	Opcode op;
+};
 
 class HttpAnalyzer {
 public:

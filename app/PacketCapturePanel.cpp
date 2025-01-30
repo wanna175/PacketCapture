@@ -34,14 +34,14 @@ void PacketCapturePanel::OnBackButtonClicked(wxCommandEvent& event) {
 }
 
 inline void PacketCapturePanel::capturePackets() {
-    capturedPacketDetails.clear();
-    packetGrid->ClearGrid();
+    //packetGrid->ClearGrid();
     
     capture->processPackets([this](const PacketData& packetInfo) {
         
         CallAfter([this, packetInfo]() {
             int cur = packetInfo.getNum();
             packetGrid->AppendRows(1);
+            ApplyColorToPacketRow(cur,packetInfo);
             packetGrid->SetCellValue(cur, 0, wxString::FromUTF8(to_string(packetInfo.getNum())));
             packetGrid->SetCellValue(cur, 1, wxString::FromUTF8(packetInfo.getTime()));
             packetGrid->SetCellValue(cur, 2, wxString::FromUTF8(packetInfo.getSrc()));
@@ -49,7 +49,7 @@ inline void PacketCapturePanel::capturePackets() {
             packetGrid->SetCellValue(cur, 4, wxString::FromUTF8(packetInfo.getProtocol()));
             packetGrid->SetCellValue(cur, 5, wxString::FromUTF8(packetInfo.getLength()));
             packetGrid->SetCellValue(cur, 6, wxString::FromUTF8(packetInfo.getInfo()));
-            capturedPacketDetails.push_back(packetInfo.getInfo());
+            capturedPacketDetails.push_back(packetInfo.getDetails());
             //// 새로 추가된 행이 보이도록 스크롤
             packetGrid->MakeCellVisible(cur, 0);
             });
@@ -92,6 +92,14 @@ inline void PacketCapturePanel::OnStartCapture(wxCommandEvent& event) {
     startButton->Enable(false);
     stopButton->Enable(true);
 
+    //변수 초기화 
+    ipColorMap.clear();
+    rowColorMap.clear();
+    packetGrid->ClearGrid();
+    if (packetGrid->GetNumberRows() > 0) {
+        packetGrid->DeleteRows(0, packetGrid->GetNumberRows());  // 모든 행 삭제
+    }
+    capturedPacketDetails.clear();
     captureThread = std::thread([this]() {
         capturePackets();
         });
@@ -137,7 +145,7 @@ inline void PacketCapturePanel::InitUI() {
     // 행 번호 없애기
     packetGrid->EnableGridLines(false);  // 그리드라인을 제거하여 번호가 보이지 않도록
     packetGrid->HideRowLabels();
-    
+
     AdjustColumnWidths();
     mainSizer->Add(packetGrid, 1, wxEXPAND | wxALL, 0);
 
@@ -159,13 +167,15 @@ inline void PacketCapturePanel::InitUI() {
 
     // 전체 레이아웃 설정
     SetSizerAndFit(mainSizer);
+
 }
 
 inline void PacketCapturePanel::OnPacketDoubleClick(wxGridEvent& event) {
     int cur = event.GetRow();
     // 선택한 행의 색상을 변경
     for (int col = 0; col < packetGrid->GetNumberCols(); ++col) {
-        packetGrid->SetCellBackgroundColour(selection, col, *wxWHITE);
+        if(selection!=-1)
+            packetGrid->SetCellBackgroundColour(selection, col, rowColorMap[selection]);
         packetGrid->SetCellBackgroundColour(cur, col, *wxLIGHT_GREY);
     }
     selection = cur;
@@ -200,5 +210,20 @@ void PacketCapturePanel::AdjustColumnWidths() {
     for (int col = 0; col < columnRatios.size(); ++col) {
         int colWidth = static_cast<int>(columnRatios[col]);
         packetGrid->SetColSize(col, colWidth);
+    }
+}
+
+void PacketCapturePanel::ApplyColorToPacketRow(int row, const PacketData& packetInfo) {
+    string key1 = packetInfo.getSrc() + packetInfo.getDst();
+    string key2 = packetInfo.getDst() + packetInfo.getSrc();
+    
+    if (ipColorMap.find(key1) == ipColorMap.end()) {
+        ipColorMap[key1] = availableColors[(ipColorMap.size() / 2) % availableColors.size()];
+        ipColorMap[key2] = availableColors[(ipColorMap.size() / 2) % availableColors.size()];
+    }
+    rowColorMap[row] = ipColorMap[key1];
+
+    for (int col = 0; col < packetGrid->GetNumberCols(); ++col) {
+        packetGrid->SetCellBackgroundColour(row, col, ipColorMap[key1]);
     }
 }

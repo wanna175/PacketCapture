@@ -83,10 +83,9 @@ void PacketCapture::timeoutCapture(int captureDuration)
 void PacketCapture::stopCapture() {
     if (handle) {
         captureActive.store(false);
+        pcap_breakloop(handle);
         pcap_close(handle);
         handle = nullptr;
-        cout << "Capture stopped." << endl;
-        stats->printStats();
     }
 }
 
@@ -134,6 +133,7 @@ unordered_map<string,string> PacketCapture::getDeviceNames() const
 bool PacketCapture::processPackets(const std::function<void(const PacketData&)>& callback)
 {
     char errbuf[PCAP_ERRBUF_SIZE];
+    this->analyzer->init();
     std::pair<PacketCapture*,std::function<void(const PacketData&)>> pair = { this, callback };
     if (pcap_loop(handle, 0, packetHandler, (u_char*)(&pair)) < 0 && captureActive.load()) {
         cerr << "Error capturing packets: " << pcap_geterr(handle) << endl;
@@ -202,25 +202,59 @@ bool PacketFilter::setFilter(pcap_t* handle) const
 // 내부 구현 클래스 정의
 class PacketAnalyzerImpl {
 public:
-    std::unique_ptr<Ethernet> ethernet;
-    std::unique_ptr<IP> ip;
-    std::unique_ptr<TCP> tcp;
-    std::unique_ptr<UDP> udp;
+    unique_ptr<Ethernet> ethernet;
+    unique_ptr<IP> ip;
+    unique_ptr<IPv6> ipv6;
+    unique_ptr<ARP> arp;
+    unique_ptr<TCP> tcp;
+    unique_ptr<UDP> udp;
 
     PacketAnalyzerImpl()
         : ethernet(std::make_unique<Ethernet>()),
-        ip(std::make_unique<IP>()),
-        tcp(std::make_unique<TCP>()),
-        udp(std::make_unique<UDP>()){}
+        ip(make_unique<IP>()),
+        ipv6(make_unique<IPv6>()),
+        arp(make_unique<ARP>()),
+        tcp(make_unique<TCP>()),
+        udp(make_unique<UDP>()){}
+
     ~PacketAnalyzerImpl() = default;
+    //transport layer 헤더 시작위치 계산
+    int getTransportOffset() const {
+        int offset = sizeof(EtherHeader);  // L2: Ethernet Header 크기
+
+        // L3: Network Layer
+        if (ethernet->getNextProtocolString() == "IPv4") {
+            offset += sizeof(IpHeader);  // IPv4 헤더 크기
+        }
+        else if (ethernet->getNextProtocolString() == "IPv6") {
+            offset += sizeof(Ipv6Header);  // IPv6 기본 헤더 크기
+
+            // IPv6 확장 헤더 처리
+            U8 nextHeader = ipv6->getProtocol();
+            while (ipv6->isExtensionHeader(nextHeader)) {
+                offset += ipv6->getExtensionHeaderLength(&nextHeader);  // 확장 헤더 길이 추가
+                nextHeader = ipv6->getNextHeader(&nextHeader);  // 다음 헤더 값 갱신
+            }
+        }
+
+        return offset;
+    }
 };
 PacketAnalyzer::PacketAnalyzer()
     : impl(std::make_unique<PacketAnalyzerImpl>()),seq(0) {
 }
 PacketAnalyzer::~PacketAnalyzer() = default;
 
+void PacketAnalyzer::init()
+{
+    this->seq = 0;
+}
+
 PacketData PacketAnalyzer::analyzePacket(const u_char* packet, const pcap_pkthdr* pkthdr)
 {
+    PacketData data;
+    stringstream info;
+    stringstream details;
     //time stamp 설정
     struct tm ltime;
     char timestr[16];
@@ -230,44 +264,71 @@ PacketData PacketAnalyzer::analyzePacket(const u_char* packet, const pcap_pkthdr
     localtime_s(&ltime, &local_tv_sec);
     strftime(timestr, sizeof timestr, "%H:%M:%S", &ltime);
 
-    PacketData data;
-    string info = "";
 
-    data.setNum(this->seq);
+    data.setNum(this->seq++);
     data.setTime(timestr);
-    (this->seq)++;
-
-    //L2 layer : Data link layer
+    data.setLength(to_string(pkthdr->len));
+    //L2 layer : Data link layer***************************************
+    
     //일단은 ethernet protocol이라고 가정하고 시작한다.====나중에 수정필요
     
     impl->ethernet = make_unique<Ethernet>(packet);
-    info.append(impl->ethernet->printEthernet());
+    details << impl->ethernet->printEthernet();
 
     data.setProtocol("ethernet");
     data.setSrc(impl->ethernet->getSourceMac());
     data.setDst(impl->ethernet->getDestinationMac());
-    data.setLength(to_string(pkthdr->len));
-    data.setInfo(info);
 
     string nextProtocol = impl->ethernet->getNextProtocolString();
     
-    //L3 Layer : Network layer
-    if (nextProtocol.compare("IPv4")|| nextProtocol.compare("IPv6")) {
+    //L3 Layer : Network layer******************************************
+    if (nextProtocol.compare("IPv4")==0) {
         impl->ip = make_unique<IP>(packet + sizeof(EtherHeader));
-        info.append(impl->ip->printIP());
-        data.setProtocol("IP");
+        details << impl->ip->printIP();
+
+        data.setProtocol("IPv4");
         data.setSrc(impl->ip->getSourceIP());
         data.setDst(impl->ip->getDestinationIP());
-        data.setInfo(info);
+        nextProtocol = impl->ip->getNextProtocolString();
     }
-    else if (nextProtocol.compare("ARP")) {
+    else if (nextProtocol.compare("IPv6")==0) {
+        impl->ipv6 = make_unique<IPv6>(packet + sizeof(EtherHeader));
+        details << impl->ipv6->printIP();
+
+        data.setProtocol("IPv6");
+        data.setSrc(impl->ipv6->getSourceIP());
+        data.setDst(impl->ipv6->getDestinationIP());
+        nextProtocol = impl->ipv6->getNextProtocolString();
+    }
+    else if (nextProtocol.compare("ARP")==0) {
+        impl->arp = make_unique<ARP>(packet + sizeof(EtherHeader));
+        details << impl->arp->printARP();
+        data.setInfo(impl->arp->formatArpInfo());
+
         data.setProtocol("ARP");
-        return data;
+        nextProtocol = "none";
+    }
+    else if (nextProtocol.compare("RARP") == 0) {
+        data.setProtocol("RARP");
     }
     else {
-        return data;
+        data.setProtocol("Unknown");
     }
 
+    //L3 Layer : Transport layer******************************************
+
+    if (nextProtocol.compare("TCP")==0) {
+        impl->tcp = make_unique<TCP>(packet + impl->getTransportOffset());
+        details << impl->tcp->printTCP();
+        data.setInfo(impl->tcp->formatTcpInfo());
+        data.setProtocol("TCP");
+    }else if (nextProtocol.compare("UDP")==0) {
+        impl->udp = make_unique<UDP>(packet + impl->getTransportOffset());
+        details << impl->udp->printUDP();
+        data.setInfo(impl->udp->formatUdpInfo());
+        data.setProtocol("UDP");
+    }
+    data.setDetails(details.str());
     return data;
 }
 

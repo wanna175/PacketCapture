@@ -81,15 +81,15 @@ typedef struct IgmpHeader {
 
 // ARP header
 typedef struct ArpHeader {
-	uint16_t hardwareType;  // 하드웨어 타입
-	uint16_t protocolType;  // 프로토콜 타입
-	uint8_t hardwareSize;   // 하드웨어 주소 크기
-	uint8_t protocolSize;   // 프로토콜 주소 크기
-	uint16_t opcode;        // 오퍼레이션 코드
-	uint8_t srcMac[6];      // 소스 MAC 주소
-	uint8_t srcIp[4];       // 소스 IP 주소
-	uint8_t dstMac[6];      // 목적지 MAC 주소
-	uint8_t dstIp[4];       // 목적지 IP 주소
+	U16 hardwareType;  // 하드웨어 타입
+	U16 protocolType;  // 프로토콜 타입
+	U8 hardwareSize;   // 하드웨어 주소 크기
+	U8 protocolSize;   // 프로토콜 주소 크기
+	U16 opcode;        // 오퍼레이션 코드
+	U8 srcMac[6];      // 소스 MAC 주소
+	U8 srcIp[4];       // 소스 IP 주소
+	U8 dstMac[6];      // 목적지 MAC 주소
+	U8 dstIp[4];       // 목적지 IP 주소
 }ArpHeader;
 #pragma pack(pop)
 

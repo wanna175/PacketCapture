@@ -14,8 +14,8 @@ using namespace std;
 *************************************/
 class PacketData {
 public:
-    PacketData(int num,string time,string src,string dst,string protocol,string len,string info,string data)
-        :number(num),time(time),source(src),destination(dst),protocol(protocol),length(len), info(info), rawData(data) { }
+    PacketData(int num,string time,string src,string dst,string protocol,string len,string info,string details, string data)
+        :number(num),time(time),source(src),destination(dst),protocol(protocol),length(len), info(info), details(details), rawData(data) { }
     int getNum() const { return number; }
     string getTime() const { return time; }
     string getSrc() const { return source; }
@@ -23,6 +23,7 @@ public:
     string getProtocol() const { return protocol; }
     string getLength() const { return length; }
     string getInfo() const { return info; }
+    string getDetails() const { return details; }
     string getData() const { return rawData; }
     void setNum(int num) { this->number = num; }
     void setTime(string time) { this->time = time; }
@@ -31,6 +32,7 @@ public:
     void setProtocol(string protocol) { this->protocol = protocol; }
     void setLength(string len) { this->length = len; }
     void setInfo(string info) { this->info = info; }
+    void setDetails(string details) { this->details = details; }
     void setData(string data) { this->rawData = data; }
 private:
     int number;
@@ -40,6 +42,7 @@ private:
     string protocol;
     string length;
     string info;
+    string details;
     string rawData;  // 원본 패킷 데이터
 public:
 
@@ -63,6 +66,7 @@ public:
     PacketAnalyzer();
     ~PacketAnalyzer();
 
+    void init();
     PacketData analyzePacket(const u_char* packet, const struct pcap_pkthdr* pkthdr);
 
 private:

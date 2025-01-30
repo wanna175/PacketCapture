@@ -65,6 +65,8 @@ string Ethernet::protocolToString(uint16_t protocol) const {
 		return "IPv4";
 	case 0x0806:
 		return "ARP";
+	case 0x8035:
+		return "RARP";
 	case 0x86DD:
 		return "IPv6";
 	default:
@@ -78,27 +80,16 @@ IP::IP(const u_char* packet)
 {
 	iph = reinterpret_cast<const IpHeader*>(packet);
 	ver = static_cast<int>((iph->verIhl & 0xF0) >> 4);
-	if (ver == 4) {
-		srcIP = ipToString(iph->srcIp);
-		dstIP = ipToString(iph->dstIp);
-		protocol = iph->protocol;
-		headerLen = static_cast<int>((iph->verIhl & 0x0F) * 4);
-		headerChecksum = iph->checksum;
-	}
-	else if (ver == 6) {
-		ip6h = reinterpret_cast<const Ipv6Header*>(packet);
-		protocol = ip6h->nextHeader;
-		srcIP = ipv6ToString(ip6h->srcAddr);
-		dstIP = ipv6ToString(ip6h->dstAddr);
-	}
+	srcIP = ipToString(iph->srcIp);
+	dstIP = ipToString(iph->dstIp);
+	protocol = iph->protocol;
+	headerLen = static_cast<int>((iph->verIhl & 0x0F) * 4);
+	headerChecksum = iph->checksum;
 }
 
 string IP::printIP() const
 {
-	if (ver == 4)
-		return printIPv4();
-	else
-		return printIPv6();
+	return printIPv4();
 }
 
 string IP::getSourceIP() const {
@@ -113,8 +104,12 @@ U8 IP::getProtocol() const {
 	return protocol;
 }
 
+string IP::getNextProtocolString() const
+{
+	return protocolToString(protocol);
+}
+
 inline string IP::ipToString(const U8* ip) const {
-	//ver에 따라 파싱이 달라져야 한다.
 	stringstream ss;
 	for (int i = 0;i < 4;++i) {
 		ss << static_cast<int>(ip[i]);
@@ -138,12 +133,12 @@ string IP::printIPv4() const
 	stringstream ss;
 
 	// DSCP 및 ECN
-	uint8_t dscp = (iph->tos >> 2) & 0x3F;
-	uint8_t ecn = iph->tos & 0x03;
+	U8 dscp = (iph->tos >> 2) & 0x3F;
+	U8 ecn = iph->tos & 0x03;
 
 	// 플래그 및 프래그먼트 오프셋
-	uint8_t flags = (iph->fragOffset >> 13) & 0x07;
-	uint16_t fragmentOffset = iph->fragOffset & 0x1FFF;
+	U8 flags = (iph->fragOffset >> 13) & 0x07;
+	U16 fragmentOffset = iph->fragOffset & 0x1FFF;
 
 	ss << "Internet Protocol Version " << static_cast<int>(ver)
 		<< ", Src: " << srcIP << ", Dst: " << dstIP << "\n";
@@ -170,14 +165,56 @@ string IP::printIPv4() const
 	return ss.str();
 }
 
-string IP::printIPv6() const
+/********************************
+	IPv6 class
+*********************************/
+IPv6::IPv6(const u_char* packet)
+{
+	ip6h = reinterpret_cast<const Ipv6Header*>(packet);
+	protocol = ip6h->nextHeader;
+	srcIP = ipv6ToString(ip6h->srcAddr);
+	dstIP = ipv6ToString(ip6h->dstAddr);
+}
+
+string IPv6::printIP() const
+{
+	return printIPv6();
+}
+
+string IPv6::getSourceIP() const {
+	return srcIP;
+}
+
+string IPv6::getDestinationIP() const {
+	return dstIP;
+}
+
+U8 IPv6::getProtocol() const {
+	return protocol;
+}
+
+
+inline string IPv6::protocolToString(U8 proto) const {
+	switch (proto) {
+	case 6: return "TCP";
+	case 17: return "UDP";
+	default: return "Unknown";
+	}
+}
+
+string IPv6::getNextProtocolString() const
+{
+	return protocolToString(protocol);
+}
+
+string IPv6::printIPv6() const
 {
 	std::stringstream ss;
 	U32 flowLabel = ip6h->versionTrafficClassFlow & 0xFFFFF;
 	U8 trafficClass = (ip6h->versionTrafficClassFlow >> 20) & 0xFF;
 
 	ss << "Internet Protocol Version 6\n";
-	ss << "\tVersion: " << ver << "\n";
+	ss << "\tVersion: 6\n";
 	ss << "\tTraffic Class: 0x" << std::hex << trafficClass << "\n";
 	ss << "\tFlow Label: 0x" << std::hex << flowLabel << "\n";
 	ss << "\tPayload Length: " << std::dec << ntohs(ip6h->payloadLength) << "\n";
@@ -188,7 +225,7 @@ string IP::printIPv6() const
 	return ss.str();
 }
 // IPv6 주소 문자열 변환
-string IP::ipv6ToString(const U8* addr) const{
+string IPv6::ipv6ToString(const U8* addr) const {
 	std::stringstream ss;
 	for (int i = 0; i < 16; i += 2) {
 		if (i > 0) ss << ":";
@@ -196,54 +233,212 @@ string IP::ipv6ToString(const U8* addr) const{
 	}
 	return ss.str();
 }
-/*
+U8 IPv6::getNextHeader() const {
+	return ip6h->nextHeader;
+}
+U8 IPv6::getNextHeader(U8* header) const {
+	return header[1];
+}
+bool IPv6::isExtensionHeader(U8 headerType) const {
+	return (headerType == 0 ||  // Hop-by-Hop Options Header
+		headerType == 43 || // Routing Header
+		headerType == 44 || // Fragment Header
+		headerType == 50 || // Encapsulating Security Payload (ESP)
+		headerType == 51 || // Authentication Header (AH)
+		headerType == 60);  // Destination Options Header
+}
+int IPv6::getExtensionHeaderLength(const U8* header) const {
+	// 확장 헤더 길이는 8바이트 단위로 표현
+	return (header[1] + 1) * 8;
+}
+const U8* IPv6::getHeaderPointer(U8 nextHeader) const {
+	const U8* ptr = reinterpret_cast<const U8*>(ip6h) + sizeof(Ipv6Header);  // IPv6 기본 헤더 바로 뒤부터 시작
+	uint8_t currentHeader = getNextHeader();              // 기본 헤더의 Next Header 필드
+
+	// 확장 헤더를 순차적으로 탐색
+	while (isExtensionHeader(currentHeader)) {
+		if (currentHeader == nextHeader) {
+			return ptr;  // 찾으려는 헤더의 시작 주소 반환
+		}
+
+		// 현재 확장 헤더의 길이를 기반으로 다음 확장 헤더로 이동
+		int headerLength = getExtensionHeaderLength(ptr);
+		ptr += headerLength;
+		currentHeader = ptr[0];  // 다음 확장 헤더의 Next Header 값
+	}
+}
+/********************************
 	TCP class
-*/
+*********************************/
 TCP::TCP(const u_char* packet)
 {
-		
-
-	tcph = (TcpHeader*)(packet + sizeof(EtherHeader) + sizeof(IpHeader));
+	tcph = reinterpret_cast<const TcpHeader*>(packet);
 	srcPort = ntohs(tcph->srcPort);
 	dstPort = ntohs(tcph->dstPort);
 }
+string TCP::formatTcpInfo() const{
+	stringstream ss;
+	// TCP 플래그 추출
+	string flags = getTcpFlags();
 
-void TCP::printTCP() const
+	// TCP 패킷 정보 포맷팅
+	ss << srcPort << " > " << dstPort << " " << flags
+		<< " Seq=" << ntohl(tcph->seq)
+		<< " Ack=" << ntohl(tcph->ack)
+		<< " Win=" << ntohs(tcph->windowSize);
+	return ss.str();
+}
+string TCP::getTcpFlags() const{
+	stringstream flags;
+
+	// 플래그 조합
+	if (tcph->flags & 0x01) flags << "[FIN";
+	if (tcph->flags & 0x02) flags << (flags.tellp() > 0 ? ", SYN" : "[SYN");
+	if (tcph->flags & 0x04) flags << (flags.tellp() > 0 ? ", RST" : "[RST");
+	if (tcph->flags & 0x08) flags << (flags.tellp() > 0 ? ", PSH" : "[PSH");
+	if (tcph->flags & 0x10) flags << (flags.tellp() > 0 ? ", ACK" : "[ACK");
+
+	if (flags.tellp() > 0) {
+		flags << "]";
+	}
+	return flags.str();
+}
+string TCP::printTCP() const
 {
-	cout << "TCP Header:\n";
-	cout << "Source Port: " << srcPort << endl;
-	cout << "Destination Port: " << dstPort << endl;
+	return parseTcpHeader();
+}
+// TCP 플래그 설명
+string TCP::parseTcpFlags(uint8_t flags) const{
+	stringstream ss;
+	ss << "\tFlags: 0x" << std::hex << static_cast<int>(flags) << "\n";
+	//ss << "\t\t000. .... .... = Reserved: Not set\n";					//
+	//ss << "\t\t...0 .... .... = Accurate ECN: Not set\n";				//
+	//ss << "\t\t.... 0... .... = Congestion Window Reduced: Not set\n";  //
+	//ss << "\t\t.... .0.. .... = ECN-Echo: Not set\n";					//
+	//ss << "\t\t.... ..0. .... = Urgent: Not set\n"; 예약된 필드거나 거의 사용되지 않음
+	ss << "\t\t.... ...0 .... = Acknowledgment: " << ((flags & 0x10) ? "Set" : "Not set") << "\n";
+	ss << "\t\t.... .... 0... = Push: " << ((flags & 0x08) ? "Set" : "Not set") << "\n";
+	ss << "\t\t.... .... .0.. = Reset: " << ((flags & 0x04) ? "Set" : "Not set") << "\n";
+	ss << "\t\t.... .... ..0. = Syn: " << ((flags & 0x02) ? "Set" : "Not set") << "\n";
+	ss << "\t\t.... .... ...0 = Fin: " << ((flags & 0x01) ? "Set" : "Not set") << "\n";
+	return ss.str();
 }
 
-/*
+// TCP 헤더 파싱 함수
+string TCP::parseTcpHeader() const{
+	stringstream ss;
+
+	// 기본 정보
+	ss << "Transmission Control Protocol, Src Port: " << ntohs(tcph->srcPort)
+		<< ", Dst Port: " << ntohs(tcph->dstPort) << ", Seq: " << ntohl(tcph->seq)
+		<< ", Ack: " << ntohl(tcph->ack) << "\n";
+
+	// 필드 출력
+	ss << "\tSource Port: " << ntohs(tcph->srcPort) << "\n";
+	ss << "\tDestination Port: " << ntohs(tcph->dstPort) << "\n";
+
+	// 플래그 디코딩
+	ss << "\t" << bitset<8>(tcph->flags) << " = Flags: 0x" << std::hex << static_cast<int>(tcph->flags) << "\n";
+	ss << parseTcpFlags(tcph->flags);
+
+	// 상세 정보
+	ss << "\tSequence Number : " << ntohl(tcph->seq) << "\n";
+	ss << "\tAcknowledgment number : " << ntohl(tcph->ack) << "\n";
+
+	ss << "\tHeader Length: " << ((tcph->data >> 4) & 0xF) * 4 << " bytes (" << ((tcph->data >> 4) & 0xF) << ")\n";
+	ss << "\tWindow: " << ntohs(tcph->windowSize) << "\n";
+	ss << "\t[Calculated window size: " << ntohs(tcph->windowSize) << "]\n";
+	ss << "\tChecksum: 0x" << std::hex << ntohs(tcph->checksum) << "\n";
+	ss << "\tUrgent Pointer: " << ntohs(tcph->urgent) << "\n";
+
+	return ss.str();
+}
+
+/********************************
 	UDP class
-*/
+*********************************/
 UDP::UDP(const u_char* packet)
 {
-	udph = (UdpHeader*)(packet + sizeof(EtherHeader));
+	udph = reinterpret_cast<const UdpHeader*>(packet);
 	srcPort = ntohs(udph->srcPort);
 	dstPort = ntohs(udph->dstPort);
 }
+string UDP::formatUdpInfo() const {
+	stringstream ss;
 
-void UDP::printUDP() const
+	// UDP 패킷 정보 포맷팅
+	ss << srcPort << " > " << dstPort << " ";
+	return ss.str();
+}
+string UDP::printUDP() const
 {
-	cout << "UDP Header:\n";
-	cout << "Source Port: " << srcPort << endl;
-	cout << "Destination Port: " << dstPort << endl;
+	stringstream ss;
+	ss << "User Datagram Protocol, Src Port: " << ntohs(udph->srcPort)
+	   << ", Dst Port: " << ntohs(udph->dstPort) << "\n";
+	ss << "\tSource Port: " << srcPort << "\n";
+	ss << "\tDestination Port: " << dstPort << "\n";
+	ss << "\tLength: " << ntohs(udph->length) << "\n";
+	ss << "\tChecksum: 0x" << std::hex << ntohs(udph->checksum) << "\n";
+	return ss.str();
 }
 
-/*
+/********************************
 	ARP class
-*/
-/*ARP::ARP(const u_char* packet)
+*********************************/
+ARP::ARP(const u_char* packet)
 {
-	arph=(UdpHeader*)(packet + sizeof(EtherHeader));
+	arph = reinterpret_cast<const ArpHeader*>(packet);
+	op = ntohs(arph->opcode) == 1 ? REQUEST : REPLY;
+}
+// MAC 주소를 문자열로 변환
+string ARP::macToString(const U8* mac) const {
+	stringstream ss;
+	for (int i = 0; i < 6; ++i) {
+		ss << std::hex << std::setw(2) << std::setfill('0') << static_cast<int>(mac[i]);
+		if (i < 5) ss << ":";
+	}
+	return ss.str();
+}
+// IP 주소를 문자열로 변환
+string ARP::ipToString(const U8* ip) const {
+	stringstream ss;
+	for (int i = 0;i < 4;++i) {
+		ss << static_cast<int>(ip[i]);
+		if (i != 3) ss << ".";
+	}
+	return ss.str();
+}
+string ARP::formatArpInfo() const
+{
+	stringstream ss;
+
+	if(op==REQUEST)
+		ss << "Who has " << ipToString(arph->dstIp) << " ? Tell " << ipToString(arph->srcIp);
+	else
+		ss << ipToString(arph->dstIp) << " is at " << macToString(arph->srcMac);
+	
+	return ss.str();
 }
 
-void ARP::printARP() const
+string ARP::printARP() const
 {
+	stringstream ss;
+	ss << "Address Resolution Protocol(" << (op==REQUEST?"request":"reply") << ")\n";
+	ss << "\tHardware Type: " << ntohs(arph->hardwareType) << "\n";
+	ss << "\tProtocol Type: 0x" << std::hex << ntohs(arph->protocolType) << std::dec << "\n";
+	ss << "\tHardware Size: " << static_cast<int>(arph->hardwareSize) << "\n";
+	ss << "\tProtocol Size: " << static_cast<int>(arph->protocolSize) << "\n";
+	ss << "\tOpcode: " << (op == REQUEST ? "request" : "reply") << "\n";
+
+	ss << "\tSender MAC: " << macToString(arph->srcMac) << "\n";
+	ss << "\tSender IP: " << ipToString(arph->srcIp) << "\n";
+	ss << "\tTarget MAC: " << macToString(arph->dstMac) << "\n";
+	ss << "\tTarget IP: " << ipToString(arph->dstIp) << "\n";
+
+	return ss.str();
 }
-*/
+
+
 /*
 	HttpAnalyzer class
 */
@@ -356,7 +551,5 @@ string TlsAnalyzer::parseCipherSuite(const u_char* data, size_t length)
 	default: return "Unknown Cipher Suite";
 	}
 }
-
-
 
 
