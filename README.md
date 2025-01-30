@@ -23,7 +23,7 @@
 - **패킷 통계 시각화:** 캡쳐된 패킷에 대한 통계를 시각적으로 보여주는 페이지를 추가할 예정입니다.
 
 ## 화면 미리보기
-<img src="https://raw.githubusercontent.com/wanna175/PacketCapture/main/gif/img/main.PNG" width="600" />
+<img src="https://raw.githubusercontent.com/wanna175/PacketCapture/main/gif/img/mainScreen.PNG" width="600" />
 
 *패킷 캡쳐 화면 예시.*
 
