@@ -2,7 +2,7 @@
 
 이 프로젝트는 Wireshark를 벤치마킹하여 만든 패킷 캡쳐 프로그램입니다. Npcap 라이브러리를 사용하여 `pcaplib`라는 정적 링크 라이브러리를 만들었고, 이를 통해 이더넷, IPv4, IPv6, UDP, TCP, ARP 프로토콜을 캡쳐하고 파싱할 수 있습니다. 또한 `sourceIP`와 `destinationIP`를 키로 사용하여 연관된 패킷을 구분할 수 있도록 했습니다.
 
-<img src="https://raw.githubusercontent.com/wanna175/PacketCapture/main/gif/app.gif" width="800" />
+<img src="https://raw.githubusercontent.com/wanna175/PacketCapture/main/gif/app2.gif" width="800" />
 
 
 ## 주요 기능
