@@ -14,19 +14,30 @@ inline void DeviceSelectionPanel::BindEvents() {
 }
 
 inline void DeviceSelectionPanel::InitUI() {
+    wxLogError("Current working directory: %s", wxGetCwd());
+
     wxBoxSizer* mainSizer = new wxBoxSizer(wxVERTICAL);
+    wxImage::AddHandler(new wxPNGHandler());  // PNG 핸들러 추가
+    // 이미지 추가
+    wxStaticBitmap* imageBitmap = nullptr;
+    wxImage image;
+    if (image.LoadFile("img/background3.png", wxBITMAP_TYPE_PNG)) { // 이미지를 지정된 경로에서 로드
+        image.Rescale(1147/3, 765/3);
+        imageBitmap = new wxStaticBitmap(this, wxID_ANY, wxBitmap(image));
+    }
+    else {
+        wxLogError("이미지 로드 실패: 경로를 확인하세요.");
+    }
+
+    if (imageBitmap) {
+        mainSizer->Add(imageBitmap, 0, wxALIGN_CENTER | wxALL, 10);
+    }
 
     // 네트워크 디바이스 리스트
     wxStaticBoxSizer* deviceSizer = new wxStaticBoxSizer(wxVERTICAL, this, "Select a Network Device");
     deviceList = new wxListBox(this, wxID_ANY);
     deviceSizer->Add(deviceList, 1, wxEXPAND | wxALL, 5);
     mainSizer->Add(deviceSizer, 1, wxEXPAND | wxALL, 5);
-
-    // Next 버튼 (아이콘 추가)
-    /*wxImage::AddHandler(new wxPNGHandler());
-    wxBitmap nextIcon("icons/next.png", wxBITMAP_TYPE_PNG);
-    nextButton = new wxBitmapButton(this, wxID_ANY, nextIcon);
-    mainSizer->Add(nextButton, 0, wxALIGN_CENTER | wxALL, 10);*/
 
     SetSizer(mainSizer);
 }
