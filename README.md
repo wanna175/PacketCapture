@@ -23,15 +23,12 @@
 - **패킷 통계 시각화:** 캡쳐된 패킷에 대한 통계를 시각적으로 보여주는 페이지를 추가할 예정입니다.
 
 ## 화면 미리보기
-![메인 UI](./img/main_ui.png)
+<img src="https://raw.githubusercontent.com/wanna175/PacketCapture/main/gif/img/main.PNG" width="600" />
 
 *패킷 캡쳐 화면 예시.*
 
-![패킷 상세](./img/packet_details.png)
+<img src="https://raw.githubusercontent.com/wanna175/PacketCapture/main/gif/img/tcp.PNG" width="600" />
+<img src="https://raw.githubusercontent.com/wanna175/PacketCapture/main/gif/img/udp.PNG" width="600" />
+<img src="https://raw.githubusercontent.com/wanna175/PacketCapture/main/gif/img/arp.PNG" width="600" />
 
-*캡쳐된 패킷의 상세 보기.*
 
-## 설치 방법
-1. 레포지토리 클론:
-   ```bash
-   git clone https://github.com/yourusername/packet-capture-program.git
